@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const loanRoutes = require("./routes/loanRoutes");
 
 dotenv.config();
 
@@ -9,6 +10,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/loan", loanRoutes);
 
 mongoose.connect(process.env.MONGO_URI,{
     useNewUrlParser: true,
