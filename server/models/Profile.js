@@ -1,16 +1,27 @@
 const mongoose = require('mongoose');
 
 const profileSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  name: String,
-  age: Number,
-  phone: String,
-  address: String,
-  jobExperience: String,
-  annualIncome: Number,
-  loanAmount: Number,
-  creditScore: Number,
-  loanStatus: String
-});
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Reference to the User model
+    required: true,
+    unique: true, // Enforce uniqueness of the userId
+  },
+  email: {
+    type: String,
+    required: true, // Ensure the email is required
+  },
+  name: { type: String },
+  age: { type: Number },
+  phone: { type: String},
+  address: { type: String},
+  jobExperience: { type: String},
+  annualIncome: { type: Number},
+  loanAmount: { type: Number},
+  creditScore: { type: Number },
+  loanStatus: { type: String},
+}, { timestamps: true });
 
-module.exports = mongoose.model('Profile', profileSchema);
+const Profile = mongoose.model('Profile', profileSchema);
+
+module.exports = Profile;
