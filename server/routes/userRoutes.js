@@ -5,8 +5,92 @@ const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/userModel");
 const Profile = require("../models/Profile");
 const router = express.Router();
+const Loan = require('../models/loan');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID); // Initialize Google OAuth client
+
+
+const mongoose = require('mongoose');
+
+// Loan Form Schema
+const loanFormSchema = new mongoose.Schema({
+  loan_application_id: String, // Common ID to link with loan documents
+  email: String,
+  loanAmount: Number,
+  creditScore: Number,
+  annualIncome: Number,
+  monthlyDebts: Number,
+  houseStatus: String,
+  yearsInJob: Number,
+  status: String,
+  createdAt: Date,
+  updatedAt: Date,
+});
+
+const LoanForm = mongoose.model('loan_forms', loanFormSchema);
+
+// Loan Documents Schema
+const loanDocumentsSchema = new mongoose.Schema({
+  loan_application_id: String, // Common ID to link with loan form
+  aadharCard: String,
+  idCard: String,
+  addressProof: String,
+  bankStatements: String,
+  documentsSubmittedAt: Date,
+  email: String,
+});
+
+const LoanDocuments = mongoose.model('loan_docs', loanDocumentsSchema);
+
+
+
+
+router.get('/loans', async (req, res) => {
+  const email = req.query.email; // User email from query parameter
+  try {
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Fetch all loan forms for the given email
+    const loanForms = await LoanForm.find({ email });
+
+    // Fetch and combine loan documents for each loan form
+    const loans = await Promise.all(
+      loanForms.map(async (loanForm) => {
+        const loanDocs = await LoanDocuments.findOne({ loan_application_id: loanForm.loan_application_id });
+
+        return {
+          loanForm: {
+            loanAmount: loanForm.loanAmount,
+            creditScore: loanForm.creditScore,
+            annualIncome: loanForm.annualIncome,
+            monthlyDebts: loanForm.monthlyDebts,
+            houseStatus: loanForm.houseStatus,
+            yearsInJob: loanForm.yearsInJob,
+            status: loanForm.status,
+            createdAt: loanForm.createdAt,
+            updatedAt: loanForm.updatedAt,
+          },
+          loanDocuments: loanDocs ? {
+            aadharCard: loanDocs.aadharCard,
+            idCard: loanDocs.idCard,
+            addressProof: loanDocs.addressProof,
+            bankStatements: loanDocs.bankStatements,
+            documentsSubmittedAt: loanDocs.documentsSubmittedAt,
+          } : null,
+        };
+      })
+    );
+
+    res.status(200).json(loans);
+  } catch (error) {
+    console.error('Error fetching loans:', error);
+    res.status(500).json({ error: 'Failed to fetch loan applications' });
+  }
+});
+
+
 
 // Middleware for verifying JWT token
 const authenticateToken = (req, res, next) => {
@@ -198,14 +282,14 @@ router.get('/profile', async (req, res) => {
 
   try {
     // Find the user in the User collection
-    const user = await User.findOne({ email });
+    const user = await User.findOne({email});
 
     if (!user) {
       return res.status(404).json({ message: 'User not found. Please sign up first.' });
     }
 
     // Check if the user has profile data
-    const profile = await Profile.findOne({ userId: user._id }); // Assuming Profile schema has userId linked to User collection
+    const profile = await Profile.findOne({email}); // Assuming Profile schema has userId linked to User collection
 
     // If profile is found, return it, else return message indicating profile not found
     if (profile) {
@@ -274,9 +358,9 @@ router.post('/profile', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    let profile = await Profile.findOne({ userId: user._id });
+    let profile = await Profile.findOne({ email });
     if (!profile) {
-      profile = new Profile({ userId: user._id }); // Create an empty profile
+      profile = new Profile({email}); // Create an empty profile
       await profile.save();
     }
 
